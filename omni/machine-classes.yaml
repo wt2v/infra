@@ -8,9 +8,9 @@ spec:
   autoprovision:
     providerid: proxmox
     providerdata: |
-      cores: 2
+      cores: 4
       sockets: 1
-      memory: 2048
+      memory: 4096
       disk_size: 10
       storage_selector: 'name == "vm-pool"'
       network_bridge: vmbr0
@@ -29,9 +29,9 @@ spec:
   autoprovision:
     providerid: proxmox
     providerdata: |
-      cores: 2
+      cores: 4
       sockets: 1
-      memory: 2048
+      memory: 4096
       disk_size: 10
       storage_selector: 'name == "vm-pool"'
       network_bridge: vmbr0

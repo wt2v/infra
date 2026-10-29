@@ -1,2 +1,4 @@
 .env
 proxmox-provider/config.yaml
+omniconfig.yaml
+*talosconfig.yaml
