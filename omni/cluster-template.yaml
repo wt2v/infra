@@ -1,0 +1,18 @@
+# Validate: omnictl cluster template validate -f omni/cluster-template.yaml
+# Create:   omnictl cluster template sync -f omni/cluster-template.yaml
+kind: Cluster
+name: talos
+kubernetes:
+  version: v1.36.3
+talos:
+  version: v1.13.12
+---
+kind: ControlPlane
+machineClass:
+  name: talos-control-plane
+  size: 3
+---
+kind: Workers
+machineClass:
+  name: talos-worker
+  size: 3

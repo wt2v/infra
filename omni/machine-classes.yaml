@@ -1,0 +1,43 @@
+# Apply with: omnictl apply -f omni/machine-classes.yaml
+# providerdata is the provider's schema (see README); storage_selector is a CEL expression.
+metadata:
+  namespace: default
+  type: MachineClasses.omni.sidero.dev
+  id: talos-control-plane
+spec:
+  autoprovision:
+    providerid: proxmox
+    providerdata: |
+      cores: 2
+      sockets: 1
+      memory: 2048
+      disk_size: 10
+      storage_selector: 'name == "vm-pool"'
+      network_bridge: vmbr0
+      cpu_type: host
+      disk_ssd: true
+      disk_discard: true
+      disk_iothread: true
+      disk_cache: none
+      placement_strategy: spread
+---
+metadata:
+  namespace: default
+  type: MachineClasses.omni.sidero.dev
+  id: talos-worker
+spec:
+  autoprovision:
+    providerid: proxmox
+    providerdata: |
+      cores: 2
+      sockets: 1
+      memory: 2048
+      disk_size: 10
+      storage_selector: 'name == "vm-pool"'
+      network_bridge: vmbr0
+      cpu_type: host
+      disk_ssd: true
+      disk_discard: true
+      disk_iothread: true
+      disk_cache: none
+      placement_strategy: spread
