@@ -1,8 +1,0 @@
-# Copy to config.yaml (gitignored) and fill in tokenSecret.
-proxmox:
-  # Any cluster node works; consider a VIP/round-robin DNS name if you have one.
-  url: "https://pve-1.edb-centralen.dk:8006/api2/json"
-  tokenID: "omni@pve!provider"
-  tokenSecret: "REPLACE_ME"
-  # Set to false once the PVE nodes have a certificate trusted by the container.
-  insecureSkipVerify: true

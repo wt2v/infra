@@ -1,8 +1,0 @@
-services:
-  omni-infra-provider-proxmox:
-    image: ghcr.io/siderolabs/omni-infra-provider-proxmox:v0.3.0
-    restart: unless-stopped
-    env_file: ../.env
-    volumes:
-      - ./config.yaml:/config.yaml:ro
-    command: ["--config-file", "/config.yaml"]
