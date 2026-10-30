@@ -20,46 +20,11 @@ Sidero Omni using [omni-infra-provider-proxmox](https://github.com/siderolabs/om
 3. **Network.** PVE nodes need internet access to the image factory (`factory.talos.dev`, or your Omni's
    factory). The VMs (bridge `vmbr0`, DHCP) must reach `https://api.omni.edb-centralen.dk` (443) and
    `edb-centralen.dk:50180/udp` (SideroLink WireGuard).
-4. The provider host needs access to the PVE API (8006/tcp) and the Omni API, and can be any Docker host
-   (it does not have to be a PVE node).
+4. **Omni infrastructure provider for Proxmox.** Must be configured with token for Proxmox with required 
+   permissions and registered to Omni. This is set up in a separate repo: 
+   https://github.com/wt2v/mgmt/tree/main/services/omni-infra-provider 
 
-## 1. Proxmox user, role and API token (on any PVE node)
-
-```bash
-pveum role add OmniProvider -privs "VM.Allocate VM.Audit VM.PowerMgmt VM.Console VM.Config.CDROM VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.Allocate Datastore.AllocateSpace Datastore.AllocateTemplate Sys.Audit Sys.Modify SDN.Use Pool.Audit Pool.Allocate"
-pveum user add omni@pve
-pveum aclmod / -user omni@pve -role OmniProvider
-pveum user token add omni@pve provider --privsep 0   # prints the secret once
-```
-
-`Sys.Modify` is required by Proxmox for the `download-url` call that fetches the Talos ISO, `Pool.Allocate` for the per-machine-set resource pools the provider creates, and `Datastore.Allocate` for deleting the per-VM cloud-init ISO (`user-data-<vmid>.iso`) on teardown. Without it, deprovisioning loops forever with `not authorized to access endpoint`. To change an existing role, use `pveum role modify OmniProvider -privs "..."`.
-
-Put the token secret in `proxmox-provider/config.yaml` (copy from the `.example`).
-If you hit permission errors, check the Proxmox task log; for a quick trial you can use the built-in
-`PVEAdmin` role instead and tighten later.
-
-## 2. Register the provider in Omni
-
-```bash
-omnictl infraprovider create proxmox
-```
-
-Copy the printed `OMNI_ENDPOINT` / `OMNI_SERVICE_ACCOUNT_KEY` into `.env`. This is the *infra provider
-key*, not a regular service account key. `OMNI_ENDPOINT` must be the URL you use for `omnictl`/the Omni UI
-(assumed `https://omni.edb-centralen.dk`), not the SideroLink machine API URL.
-
-## 3. Run the provider
-
-```bash
-cp .env.example .env && cp proxmox-provider/config.yaml.example proxmox-provider/config.yaml
-# edit both
-docker compose -f proxmox-provider/docker-compose.yaml up -d
-docker compose -f proxmox-provider/docker-compose.yaml logs -f
-```
-
-"Proxmox" should show up under Omni → Infra Providers as connected.
-
-## 4. Create the cluster
+## 1. Create the cluster
 
 ```bash
 omnictl apply -f omni/machine-classes.yaml
@@ -72,7 +37,7 @@ Omni requests 5 machines; the provider downloads the ISO, creates the VMs (sprea
 they register via SideroLink. Tear down with `omnictl cluster template delete -f omni/cluster-template.yaml`
 (VMs are removed automatically).
 
-## 5. Test connection to cluster
+## 2. Test connection to cluster
 
 ```
 omnictl kubeconfig --cluster <cluster-name> --grant-type=authcode-keyboard
