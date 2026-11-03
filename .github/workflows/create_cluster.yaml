@@ -11,7 +11,7 @@ permissions:
 env:
   # Keep in line with the Omni server version.
   OMNICTL_VERSION: v1.12.1
-  OMNI_ENDPOINT: ${{ secrets.OMNI_ENDPOINT }}
+  OMNI_ENDPOINT: ${{ vars.OMNI_ENDPOINT }}
   OMNI_SERVICE_ACCOUNT_KEY: ${{ secrets.OMNI_SERVICE_ACCOUNT_KEY }}
 
 jobs:

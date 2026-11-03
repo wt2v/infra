@@ -1,3 +1,4 @@
+.env
 omniconfig.yaml
 *talosconfig.yaml
 kubeconfig
