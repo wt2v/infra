@@ -1,0 +1,6 @@
+configs:
+  cm:
+    # Annotation tracking avoids clashing with the app.kubernetes.io/instance label set by Helm.
+    application.resourceTrackingMethod: annotation
+dex:
+  enabled: false

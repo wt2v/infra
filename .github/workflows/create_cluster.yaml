@@ -1,0 +1,93 @@
+name: Create cluster
+
+# Stage 1 creates the Talos/Kubernetes cluster through Omni (Omni installs Cilium).
+# Stage 2 installs Argo CD, which then manages everything in platform/ from main.
+on:
+  workflow_dispatch:
+
+concurrency: create-cluster
+
+permissions:
+  contents: read
+
+env:
+  # Keep in line with the Omni server version.
+  OMNICTL_VERSION: v1.12.1
+  OMNI_ENDPOINT: ${{ secrets.OMNI_ENDPOINT }}
+  OMNI_SERVICE_ACCOUNT_KEY: ${{ secrets.OMNI_SERVICE_ACCOUNT_KEY }}
+
+jobs:
+  create-cluster:
+    # Must be able to reach the Omni endpoint; use a self-hosted runner (with helm and yq) if Omni is not public.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install omnictl
+        run: |
+          curl -fsSL -o omnictl "https://github.com/siderolabs/omni/releases/download/${OMNICTL_VERSION}/omnictl-linux-amd64"
+          sudo install omnictl /usr/local/bin/omnictl
+
+      # Same chart version and values that Argo CD uses afterwards (platform/cilium/), so Argo CD can adopt it.
+      # cluster/cluster-templates/cluster-template.yaml references the result as an Omni manifest.
+      - name: Render Cilium manifest
+        run: |
+          app=platform/cilium/app.yaml
+          helm template "$(yq .name "$app")" "$(yq .chart.name "$app")" \
+            --repo "$(yq .chart.repo "$app")" --version "$(yq .chart.version "$app")" \
+            --namespace "$(yq .namespace "$app")" \
+            --values platform/cilium/values.yaml > cluster/cluster-templates/cilium.yaml
+
+      - name: Create or update the cluster
+        run: |
+          omnictl apply -f cluster/machine-classes
+          omnictl cluster template validate -f cluster/cluster-templates/cluster-template.yaml
+          omnictl cluster template sync -f cluster/cluster-templates/cluster-template.yaml
+
+      # Omni applies the Cilium manifest once the Kubernetes API is up, which lets the nodes become ready.
+      - name: Wait for the cluster to be ready
+        run: omnictl cluster template status -f cluster/cluster-templates/cluster-template.yaml --wait 40m
+
+  bootstrap-platform:
+    needs: create-cluster
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install omnictl
+        run: |
+          curl -fsSL -o omnictl "https://github.com/siderolabs/omni/releases/download/${OMNICTL_VERSION}/omnictl-linux-amd64"
+          sudo install omnictl /usr/local/bin/omnictl
+
+      - name: Get kubeconfig
+        run: |
+          cluster=$(yq 'select(.kind == "Cluster") | .name' cluster/cluster-templates/cluster-template.yaml)
+          omnictl kubeconfig --cluster "$cluster" --service-account --user github-actions \
+            --force --merge=false "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
+
+      # Chart repo/version and values come from platform/argocd/, the same files Argo CD uses afterwards.
+      - name: Install Argo CD
+        run: |
+          app=platform/argocd/app.yaml
+          helm upgrade --install "$(yq .name "$app")" "$(yq .chart.name "$app")" \
+            --repo "$(yq .chart.repo "$app")" --version "$(yq .chart.version "$app")" \
+            --namespace "$(yq .namespace "$app")" --create-namespace \
+            --values platform/argocd/values.yaml --wait --timeout 10m
+
+      - name: Give Argo CD access to this repository
+        env:
+          ARGOCD_REPO_SSH_KEY: ${{ secrets.ARGOCD_REPO_SSH_KEY }}
+        run: |
+          repo_url=$(yq '.spec.generators[0].git.repoURL' platform/appset.yaml)
+          kubectl -n argocd create secret generic repo-platform \
+            --from-literal=type=git --from-literal=url="$repo_url" \
+            --from-literal=sshPrivateKey="$ARGOCD_REPO_SSH_KEY" \
+            --dry-run=client -o yaml \
+            | kubectl label --local -f - argocd.argoproj.io/secret-type=repository -o yaml \
+            | kubectl apply -f -
+
+      - name: Hand over to Argo CD
+        run: kubectl apply -f platform/appset.yaml

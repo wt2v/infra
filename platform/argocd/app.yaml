@@ -1,0 +1,6 @@
+name: argocd
+namespace: argocd
+chart:
+  repo: https://argoproj.github.io/argo-helm
+  name: argo-cd
+  version: 10.11.6

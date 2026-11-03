@@ -1,0 +1,44 @@
+# Generates one Argo CD Application per platform/<app>/app.yaml, using platform/<app>/values.yaml.
+# Applied once by the Create cluster workflow; later changes need a manual `kubectl apply -f platform/appset.yaml`.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    # Removing an app folder must not delete the app's resources (Cilium, Argo CD itself).
+    preserveResourcesOnDeletion: true
+  generators:
+    - git:
+        repoURL: git@github.com:wt2v/infra.git
+        revision: main
+        files:
+          - path: platform/*/app.yaml
+  template:
+    metadata:
+      name: '{{ .name }}'
+    spec:
+      project: default
+      sources:
+        - repoURL: '{{ .chart.repo }}'
+          chart: '{{ .chart.name }}'
+          targetRevision: '{{ .chart.version }}'
+          helm:
+            releaseName: '{{ .name }}'
+            valueFiles:
+              - '$values/{{ .path.path }}/values.yaml'
+        - repoURL: git@github.com:wt2v/infra.git
+          targetRevision: main
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{ .namespace }}'
+      syncPolicy:
+        automated:
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

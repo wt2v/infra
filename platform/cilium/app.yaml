@@ -1,0 +1,6 @@
+name: cilium
+namespace: kube-system
+chart:
+  repo: https://helm.cilium.io/
+  name: cilium
+  version: 1.20.4

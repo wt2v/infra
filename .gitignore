@@ -1,2 +1,4 @@
 omniconfig.yaml
 *talosconfig.yaml
+kubeconfig
+cluster/cluster-templates/cilium.yaml
