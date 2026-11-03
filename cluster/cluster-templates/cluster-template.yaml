@@ -2,7 +2,7 @@
 # Validate: omnictl cluster template validate -f cluster/cluster-templates/cluster-template.yaml
 # Create:   omnictl cluster template sync -f cluster/cluster-templates/cluster-template.yaml
 kind: Cluster
-name: talos
+name: prod
 kubernetes:
   version: v1.36.3
   manifests:
