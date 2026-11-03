@@ -1,7 +1,5 @@
 name: Create cluster
 
-# Stage 1 creates the Talos/Kubernetes cluster through Omni (Omni installs Cilium).
-# Stage 2 installs Argo CD, which then manages everything in platform/ from main.
 on:
   workflow_dispatch:
 
@@ -20,9 +18,16 @@ jobs:
   create-cluster:
     # Must be able to reach the Omni endpoint; use a self-hosted runner (with helm and yq) if Omni is not public.
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:github-actions
 
       - name: Install omnictl
         run: |
@@ -47,14 +52,21 @@ jobs:
 
       # Omni applies the Cilium manifest once the Kubernetes API is up, which lets the nodes become ready.
       - name: Wait for the cluster to be ready
-        run: omnictl cluster template status -f cluster/cluster-templates/cluster-template.yaml --wait 40m
+        run: omnictl cluster template status -f cluster/cluster-templates/cluster-template.yaml --wait 10m
 
   bootstrap-platform:
     needs: create-cluster
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:github-actions
 
       - name: Install omnictl
         run: |
